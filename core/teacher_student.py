@@ -21,6 +21,7 @@ class TeacherStudentModel(nn.Module):
 
     def __init__(self, configs):
         super(TeacherStudentModel, self).__init__()
+        self.configs = configs
         self.student_net = StudentNetwork(configs['student_configs'])
         self.teacher_net = TeacherNetwork(configs['teacher_configs'])
 
@@ -128,7 +129,8 @@ class TeacherStudentModel(nn.Module):
                     if len(indices) == 0:
                         continue
                     count += len(indices)
-                    selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(-1, inputs.size(1))
+                    selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(len(indices),
+                                                                                      *inputs.size()[1:])
                     selected_labels = torch.gather(labels, 0, indices.squeeze()).view(-1, 1)
                     input_pool.append(selected_inputs)
                     label_pool.append(selected_labels)
@@ -164,6 +166,7 @@ class TeacherStudentModel(nn.Module):
                 # ============== or exceeds the max_t ==================
                 if acc >= tau or i_tau == max_t:
                     teacher_optimizer.zero_grad()
+
                     reward = -math.log(i_tau/max_t)
                     baseline = 0 if len(rewards) == 0 else sum(rewards)/len(rewards)
                     last_reward = 0 if len(rewards) == 0 else rewards[-1]
@@ -177,13 +180,122 @@ class TeacherStudentModel(nn.Module):
                     teacher_optimizer.step()
                     teacher_updates += 1
                     teacher_lr_scheduler(teacher_optimizer, teacher_updates)
+
+                    # ========= reinitialize the student network =========
+                    self.student_net.init_weights()
                     # ========== break for next batch ====================
                     break
 
             # ==================== policy converged (stopping criteria) ==
             if non_increasing_steps >= max_non_increasing_steps:
-                break
+                return
 
     def val_teacher(self, configs):
         # TODO: test for the policy. Plotting the curve of #effective_samples-test_accuracy
-        num_eff_points = 0
+        '''
+        :param configs:
+            Required:
+                state_func
+                dataloader: student/dev/test
+                optimizer: student
+                lr_scheduler: student
+                logger
+            Optional:
+                threshold
+                M
+                num_classes
+                max_t
+                (Note: should be consistent with training)
+        :return:
+        '''
+        teacher = self.teacher_net
+        student = self.student_net
+        # ==================== fetch configs [optional] ===============
+        threshold = configs.get('threshold', 0.5)
+        M = configs.get('M', 128)
+        num_classes = configs.get('num_classes', 10)
+        max_t = configs.get('max_t', 50000)
+        # =================== fetch configs [required] ================
+        state_func = configs['state_func']
+        student_dataloader = configs['dataloader']['student']
+        dev_dataloader = configs['dataloader']['dev']
+        test_dataloader = configs['dataloader']['test']
+        student_optimizer = configs['optimizer']['student']
+        student_lr_scheduler = configs['lr_scheduler']['student']
+        logger = configs['logger']
+
+        # ================== init tracking history ====================
+        training_loss_history = []
+        val_loss_history = []
+
+        student_updates = 0
+        best_acc_on_dev = 0
+        best_acc_on_test = 0
+        i_tau = 0
+        effective_num = 0
+        effnum_acc_curves = []
+
+        while i_tau < max_t:
+            i_tau += 1
+            count = 0
+            input_pool = []
+            label_pool = []
+            # ================== collect training batch ============
+            for idx, (inputs, labels) in student_dataloader:
+                state_configs = {
+                    'num_classes': num_classes,
+                    'labels': labels,
+                    'inputs': inputs,
+                    'student': student,
+                    'current_iter': i_tau,
+                    'max_iter': max_t,
+                    'train_loss_history': training_loss_history,
+                    'val_loss_history': val_loss_history
+                }
+                states = state_func(state_configs)  # TODO: implement the function for computing state
+                predicts = teacher(states, None)
+                indices = torch.nonzero(predicts >= threshold)
+                if len(indices) == 0:
+                    continue
+                count += len(indices)
+                selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(len(indices),
+                                                                                  *inputs.size()[1:])
+                selected_labels = torch.gather(labels, 0, indices.squeeze()).view(-1, 1)
+                input_pool.append(selected_inputs)
+                label_pool.append(selected_labels)
+                if count >= M:
+                    effective_num += count
+                    break
+
+            # ================== prepare training data =============
+            inputs = torch.cat(input_pool, 0)
+            labels = torch.cat(label_pool, 0)
+            st_configs = {
+                'dataloader': to_generator([inputs, labels]),
+                'optimizer': student_optimizer,
+                'current_epoch': student_updates,
+                'total_epochs': -1,
+                'logger': logger
+            }
+            # ================= feed the selected batch ============
+            train_loss = student.fit(st_configs)
+            training_loss_history.append(train_loss)
+            student_updates += 1
+            student_lr_scheduler(student_optimizer, student_updates)
+
+            # ================ test on dev set =====================
+            st_configs['dataloader'] = dev_dataloader
+            acc, val_loss = student.val(st_configs)
+            best_acc_on_dev = acc if best_acc_on_dev < acc else best_acc_on_dev
+            logger.info('Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f' % (student_updates,
+                                                                                       acc, best_acc_on_dev))
+            val_loss_history.append(val_loss)
+
+            # =============== test on test set ======================
+            st_configs['dataloader'] = test_dataloader
+            acc, test_loss = student.val(configs)
+            best_acc_on_test = acc if best_acc_on_test < acc else best_acc_on_test
+            logger.info('Testing Set: Iteration [%d], accuracy: %5.4f, best: %5.4f' % (student_updates,
+                                                                                       acc, best_acc_on_test))
+            effnum_acc_curves.append((effective_num, acc))
+        return effnum_acc_curves
