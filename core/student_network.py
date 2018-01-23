@@ -31,6 +31,7 @@ class StudentNetwork(nn.Module):
         return predicts, eval_res
 
     def fit(self, configs):
+        self.train()
         dataloader, optimizer = configs['dataloader'], configs['optimizer']
         try:
             flag = True
@@ -45,6 +46,7 @@ class StudentNetwork(nn.Module):
         all_correct = 0
         all_samples = 0
         loss_average = 0
+
         for idx, (inputs, labels) in enumerate(dataloader):
             optimizer.zero_grad()
             if flag:
@@ -55,22 +57,21 @@ class StudentNetwork(nn.Module):
             eval_res = self.evaluator(predicts, labels)
             num_correct = eval_res['num_correct']
             num_samples = eval_res['num_samples']
+            # logger.info('num_samples %d, num_correct %d'%(num_samples, num_correct))
             loss = eval_res['loss']
-
             all_correct += num_correct
             all_samples += num_samples
-
             loss.backward()
             optimizer.step()
-
-            logger.info('Train: Epoch [%d/%d], Iteration [%d/%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
-                current_epoch, total_epochs, idx, total_steps, loss.cpu().data[0],
+            logger.info('Train: ----- Iteration [%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
+                current_epoch, loss.cpu().data[0],
                 num_correct/num_samples, all_correct/all_samples))
 
             loss_average += loss.cpu().data[0]
         return loss_average/total_steps
 
     def val(self, configs):
+        self.eval()
         dataloader = configs['dataloader']
         total_steps = len(dataloader)
         current_epoch = configs['current_epoch']

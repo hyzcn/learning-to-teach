@@ -133,9 +133,6 @@ class TeacherStudentModel(nn.Module):
                     if len(indices) == 0:
                         continue
                     count += len(indices)
-                    # import pdb
-                    # print('11111111')
-                    # pdb.set_trace()
                     selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
                     selected_labels = labels[indices.squeeze()].view(-1, 1)
                     input_pool.append(selected_inputs)

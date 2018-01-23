@@ -75,8 +75,10 @@ def state_func(configs):
 
 
 def evaluator(predicts, labels):
+    labels = labels.squeeze()
     criterion = nn.CrossEntropyLoss()
     num_correct = torch.sum(torch.max(predicts, 1)[1] == labels).cpu().data[0]
     num_samples = predicts.size(0)
-    loss = criterion(predicts, labels.squeeze())
+    loss = criterion(predicts, labels)
+    # print ('num_correct:', num_correct, 'num_samples:', num_samples)
     return {'num_correct': num_correct, 'num_samples':num_samples, 'loss':loss}
