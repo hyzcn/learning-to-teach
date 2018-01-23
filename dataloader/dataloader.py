@@ -8,6 +8,8 @@ import torch
 import numpy as np
 
 import torch.utils.data as data
+from misc.utils import to_var
+
 
 
 class Cifar10Dataloader(data.Dataset):
@@ -19,7 +21,7 @@ class Cifar10Dataloader(data.Dataset):
         if self.transform is None:
             print ('Warning, transform is None!')
         self.split = split
-        data_dict = torch.load(os.path.join(root, 'cifar10', split + '.pth'))
+        data_dict = torch.load(os.path.join(root, 'data', 'cifar10', split + '.pth'))
         labels = []
         data = []
         for label, data_list in data_dict.items():
@@ -45,8 +47,12 @@ class Cifar10Dataloader(data.Dataset):
 
         return img, target
 
-    # def collate_fn(self, data):
-    #
+    def collate_fn(self, data):
+        inputs, labels = zip(*data)
+        # print (len(inputs), inputs[0].shape)
+        labels = torch.LongTensor(labels)
+        inputs = torch.cat([x.view(1, 3, 32, 32) for x in inputs], 0)
+        return inputs, labels
 
 
 def get_dataloader(configs):
@@ -57,7 +63,8 @@ def get_dataloader(configs):
         data_loader = torch.utils.data.DataLoader(dataset=dataset,
                                                   batch_size=batch_size,
                                                   shuffle=shuffle,
-                                                  num_workers=2)
+                                                  num_workers=2,
+                                                  collate_fn=dataset.collate_fn)
     else:
         raise NotImplementedError
 

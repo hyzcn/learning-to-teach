@@ -3,15 +3,11 @@ from __future__ import print_function, division, absolute_import
 import argparse
 
 import torch
-import torch.nn as nn
 
-from core.student_network import StudentNetwork
-from core.teacher_network import TeacherNetwork
 from core.teacher_student import TeacherStudentModel
 from core.helper_functions import state_func
 
 from misc.logger import create_logger
-from misc.saver import Saver
 
 from hparams.register import get_hparams
 from dataloader.dataloader import get_dataloader
@@ -74,9 +70,9 @@ def main(hparams):
 
     # ================== set up optimizer ===============================
     _student_optim_configs = hparams.optimizer['student_configs']
-    _student_optim_configs['model'] = TeacherStudentModel.student_net
+    _student_optim_configs['model'] = model.student_net
     _teacher_optim_configs = hparams.optimizer['teacher_configs']
-    _student_optim_configs['model'] = TeacherStudentModel.teacher_net
+    _teacher_optim_configs['model'] = model.teacher_net
     student_optimizer = get_optimizer(_student_optim_configs)
     teacher_optimizer = get_optimizer(_teacher_optim_configs)
 

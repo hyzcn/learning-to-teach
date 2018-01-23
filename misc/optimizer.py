@@ -8,6 +8,6 @@ def get_optimizer(configs):
     built_in = {'SGD': optim.SGD, 'Adam': optim.Adam}
     momentum = configs.get('momentum', 0)
     if momentum != 0:
-        return built_in[optimizer](lr=base_lr, parameters=model.parameters(), momentum=momentum)
+        return built_in[optimizer](model.parameters(), lr=base_lr, momentum=momentum)
     else:
-        return built_in[optimizer](lr=base_lr, parameters=model.parameters())
+        return built_in[optimizer](model.parameters(), lr=base_lr)

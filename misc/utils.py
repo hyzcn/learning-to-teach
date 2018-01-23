@@ -8,8 +8,16 @@ import sys
 import time
 import math
 
+import torch
 import torch.nn as nn
 import torch.nn.init as init
+
+from torch.autograd import Variable
+
+def to_var(x, volatile=False, requires_grad=False):
+    if torch.cuda.is_available():
+        x = x.cuda()
+    return Variable(x, volatile=volatile, requires_grad=requires_grad)
 
 
 def get_mean_and_std(dataset):
@@ -31,14 +39,14 @@ def init_params(net):
     for m in net.modules():
         if isinstance(m, nn.Conv2d):
             init.kaiming_normal(m.weight, mode='fan_out')
-            if m.bias:
+            if m.bias is not None:
                 init.constant(m.bias, 0)
         elif isinstance(m, nn.BatchNorm2d):
             init.constant(m.weight, 1)
             init.constant(m.bias, 0)
         elif isinstance(m, nn.Linear):
             init.normal(m.weight, std=1e-3)
-            if m.bias:
+            if m.bias is not None:
                 init.constant(m.bias, 0)
 
 

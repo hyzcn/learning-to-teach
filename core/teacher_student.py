@@ -10,7 +10,7 @@ import torch.nn as nn
 from core.student_network import StudentNetwork
 from core.teacher_network import TeacherNetwork
 
-from misc.utils import init_params
+from misc.utils import init_params, to_var
 
 # ================== helper function ===============
 def to_generator(data):
@@ -113,7 +113,9 @@ class TeacherStudentModel(nn.Module):
                 input_pool = []
                 label_pool = []
                 # ================== collect training batch ============
-                for idx, (inputs, labels) in teacher_dataloader:
+                for idx, (inputs, labels) in enumerate(teacher_dataloader):
+                    inputs = to_var(inputs)
+                    labels = to_var(labels)
                     state_configs = {
                         'num_classes': num_classes,
                         'labels': labels,
@@ -125,14 +127,17 @@ class TeacherStudentModel(nn.Module):
                         'val_loss_history': val_loss_history
                     }
                     states = state_func(state_configs) # TODO: implement the function for computing state
-                    predicts = teacher(states, None)
-                    indices = torch.nonzero(predicts >= threshold)
+                    _inputs = {'input': states.detach()}
+                    predicts = teacher(_inputs, None)
+                    indices = torch.nonzero(predicts.data.squeeze() >= threshold)
                     if len(indices) == 0:
                         continue
                     count += len(indices)
-                    selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(len(indices),
-                                                                                      *inputs.size()[1:])
-                    selected_labels = torch.gather(labels, 0, indices.squeeze()).view(-1, 1)
+                    # import pdb
+                    # print('11111111')
+                    # pdb.set_trace()
+                    selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
+                    selected_labels = labels[indices.squeeze()].view(-1, 1)
                     input_pool.append(selected_inputs)
                     label_pool.append(selected_labels)
                     actions.append(torch.log(predicts))
@@ -146,7 +151,7 @@ class TeacherStudentModel(nn.Module):
                     'dataloader': to_generator([inputs, labels]),
                     'optimizer': student_optimizer,
                     'current_epoch': student_updates,
-                    'total_epochs': -1,
+                    'total_epochs': 0,
                     'logger': logger
                 }
                 # ================= feed the selected batch ============
@@ -244,7 +249,7 @@ class TeacherStudentModel(nn.Module):
             input_pool = []
             label_pool = []
             # ================== collect training batch ============
-            for idx, (inputs, labels) in student_dataloader:
+            for idx, (inputs, labels) in enumerate(student_dataloader):
                 state_configs = {
                     'num_classes': num_classes,
                     'labels': labels,

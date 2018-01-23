@@ -38,7 +38,7 @@ class TeacherNetwork(nn.Module):
         self.fc0.weight.data.uniform_(-scale, scale)
         self.fc0.bias.data.fill_(0)
         self.fc1.weight.data.uniform_(-scale, scale)
-        self.fc1.weight.bias.fill_(2)
+        self.fc1.bias.data.fill_(2)
         # for not filtering too much data in the early stage
         # refer to section 7.2 for details.
 

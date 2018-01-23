@@ -1,4 +1,3 @@
-from misc.build_vocab import *
 class HParams(object):
 
     def __init__(self, **kwargs):
@@ -26,8 +25,6 @@ class HParams(object):
                 hps._set(key, int(value))
             elif isinstance(default_value, float):
                 hps._set(key, float(value))
-            elif isinstance(default_value, Vocabulary):
-                hps._set(key, Vocabulary(value))
             else:
                 hps._set(key, value)
         return hps

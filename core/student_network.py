@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import torch
 import torch.nn as nn
+from misc.utils import to_var
 
 
 class StudentNetwork(nn.Module):
@@ -23,13 +24,20 @@ class StudentNetwork(nn.Module):
 
     def forward(self, data, configs):
         inputs, labels = data['inputs'], data['labels']
-        predicts = self.base_model(inputs, configs)
+        # import pdb
+        # pdb.set_trace()
+        predicts = self.base_model(inputs)
         eval_res = self.evaluator(predicts, labels)
         return predicts, eval_res
 
     def fit(self, configs):
         dataloader, optimizer = configs['dataloader'], configs['optimizer']
-        total_steps = len(dataloader)
+        try:
+            flag = True
+            total_steps = len(dataloader)
+        except:
+            flag = False
+            total_steps = 1
         current_epoch = configs['current_epoch']
         total_epochs = configs['total_epochs']
         logger = configs['logger']
@@ -38,9 +46,11 @@ class StudentNetwork(nn.Module):
         all_samples = 0
         loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
-            optimizer.zero_gradient()
-
-            predicts = self.base_model(inputs, configs)
+            optimizer.zero_grad()
+            if flag:
+                inputs = to_var(inputs)
+                labels = to_var(labels)
+            predicts = self.base_model(inputs)
 
             eval_res = self.evaluator(predicts, labels)
             num_correct = eval_res['num_correct']
@@ -71,14 +81,16 @@ class StudentNetwork(nn.Module):
         all_samples = 0
         loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
-            predicts = self.base_model(inputs, configs)
+            inputs = to_var(inputs)
+            labels = to_var(labels)
+            predicts = self.base_model(inputs)
             eval_res = self.evaluator(predicts, labels)
             num_correct = eval_res['num_correct']
             num_samples = eval_res['num_samples']
             all_correct += num_correct
             all_samples += num_samples
-            logger.info('Eval: Epoch [%d/%d], Iteration [%d/%d], accuracy: %5.4f(%5.4f)' % (
-                current_epoch, total_epochs, idx, total_steps, num_correct/num_samples, all_correct/all_samples))
+            # logger.info('Eval: Epoch [%d/%d], Iteration [%d/%d], accuracy: %5.4f(%5.4f)' % (
+            #    current_epoch, total_epochs, idx, total_steps, num_correct/num_samples, all_correct/all_samples))
             loss_average += eval_res['loss'].cpu().data[0]
 
         return all_correct/all_samples, loss_average/total_steps
