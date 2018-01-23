@@ -39,18 +39,24 @@ class StudentNetwork(nn.Module):
         loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
             optimizer.zero_gradient()
+
             predicts = self.base_model(inputs, configs)
+
             eval_res = self.evaluator(predicts, labels)
             num_correct = eval_res['num_correct']
             num_samples = eval_res['num_samples']
             loss = eval_res['loss']
+
             all_correct += num_correct
             all_samples += num_samples
+
             loss.backward()
             optimizer.step()
+
             logger.info('Train: Epoch [%d/%d], Iteration [%d/%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
                 current_epoch, total_epochs, idx, total_steps, loss.cpu().data[0],
                 num_correct/num_samples, all_correct/all_samples))
+
             loss_average += loss.cpu().data[0]
         return loss_average/total_steps
 
