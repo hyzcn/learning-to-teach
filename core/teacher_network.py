@@ -55,10 +55,5 @@ class TeacherNetwork(nn.Module):
         out = self.sigmoid(out)
         return out
 
-    # def fit(self, data, configs):
-    #     pass
-    #
-    # def val(self, data, configs):
-    #     pass
 
 

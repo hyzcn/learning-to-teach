@@ -36,6 +36,7 @@ class StudentNetwork(nn.Module):
 
         all_correct = 0
         all_samples = 0
+        loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
             optimizer.zero_gradient()
             predicts = self.base_model(inputs, configs)
@@ -50,6 +51,8 @@ class StudentNetwork(nn.Module):
             logger.info('Train: Epoch [%d/%d], Iteration [%d/%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
                 current_epoch, total_epochs, idx, total_steps, loss.cpu().data[0],
                 num_correct/num_samples, all_correct/all_samples))
+            loss_average += loss.cpu().data[0]
+        return loss_average/total_steps
 
     def val(self, configs):
         dataloader = configs['dataloader']
@@ -60,6 +63,7 @@ class StudentNetwork(nn.Module):
 
         all_correct = 0
         all_samples = 0
+        loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
             predicts = self.base_model(inputs, configs)
             eval_res = self.evaluator(predicts, labels)
@@ -69,8 +73,9 @@ class StudentNetwork(nn.Module):
             all_samples += num_samples
             logger.info('Eval: Epoch [%d/%d], Iteration [%d/%d], accuracy: %5.4f(%5.4f)' % (
                 current_epoch, total_epochs, idx, total_steps, num_correct/num_samples, all_correct/all_samples))
+            loss_average += eval_res['loss'].cpu().data[0]
 
-        return all_correct/all_samples
+        return all_correct/all_samples, loss_average/total_steps
 
 
 
