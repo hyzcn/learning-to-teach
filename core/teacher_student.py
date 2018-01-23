@@ -10,6 +10,8 @@ import torch.nn as nn
 from core.student_network import StudentNetwork
 from core.teacher_network import TeacherNetwork
 
+from misc.utils import init_params
+
 # ================== helper function ===============
 def to_generator(data):
     yield data
@@ -24,6 +26,7 @@ class TeacherStudentModel(nn.Module):
         self.configs = configs
         self.student_net = StudentNetwork(configs['student_configs'])
         self.teacher_net = TeacherNetwork(configs['teacher_configs'])
+        init_params(self.student_net)
 
     # def forward(self, data, configs):
     #     pass
@@ -180,7 +183,7 @@ class TeacherStudentModel(nn.Module):
                     teacher_lr_scheduler(teacher_optimizer, teacher_updates)
 
                     # ========= reinitialize the student network =========
-                    self.student_net.init_weights()
+                    init_params(self.student_net)
                     # ========== break for next batch ====================
                     break
 
@@ -208,7 +211,7 @@ class TeacherStudentModel(nn.Module):
         '''
         teacher = self.teacher_net
         # ==================== train student from scratch ============
-        self.student_net.init_weights()
+        init_params(self.student_net)
         student = self.student_net
         # ==================== fetch configs [optional] ===============
         threshold = configs.get('threshold', 0.5)
