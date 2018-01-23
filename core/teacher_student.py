@@ -48,8 +48,8 @@ class TeacherStudentModel(nn.Module):
                     teahcer: the learning rate scheduler for the teacher model
                     student: the learning rate scheduler for the student model
 
-                current_epoch: [int] the current epoch
-                total_epochs: the max number of epochs to train the model
+                <del>current_epoch: [int] the current epoch</del>
+                <del>total_epochs: the max number of epochs to train the model</del>
                 logger: the logger
 
             Optional:
@@ -82,15 +82,13 @@ class TeacherStudentModel(nn.Module):
         # =================== fetch configs [required] ================
         state_func = configs['state_func']
         teacher_dataloader = configs['dataloader']['teacher']
-        student_dataloader = configs['dataloader']['student']
+        # student_dataloader = configs['dataloader']['student']
         dev_dataloader = configs['dataloader']['dev']
-        test_dataloader = configs['dataloader']['test']
+        # test_dataloader = configs['dataloader']['test']
         teacher_optimizer = configs['optimizer']['teacher']
         student_optimizer = configs['optimizer']['student']
         teacher_lr_scheduler = configs['lr_scheduler']['teacher']
         student_lr_scheduler = configs['lr_scheduler']['student']
-        current_epoch = configs['current_epoch']
-        total_epochs = configs['total_epochs']
         logger = configs['logger']
 
         # ================== init tracking history ====================
@@ -173,8 +171,8 @@ class TeacherStudentModel(nn.Module):
                     if last_reward >= reward:
                         non_increasing_steps += 1
                     loss = -sum([torch.sum(_) for _ in actions])*(reward - baseline)
-                    logger.info('Policy: Epoch [%d/%d], Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, reward: %5.4f(%5.4f)'
-                                %(current_epoch, total_epochs, teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
+                    logger.info('Policy: Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, reward: %5.4f(%5.4f)'
+                                %(teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
                     rewards.append(reward)
                     loss.backward()
                     teacher_optimizer.step()
@@ -209,6 +207,8 @@ class TeacherStudentModel(nn.Module):
         :return:
         '''
         teacher = self.teacher_net
+        # ==================== train student from scratch ============
+        self.student_net.init_weights()
         student = self.student_net
         # ==================== fetch configs [optional] ===============
         threshold = configs.get('threshold', 0.5)
