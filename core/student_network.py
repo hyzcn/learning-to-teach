@@ -41,6 +41,7 @@ class StudentNetwork(nn.Module):
             total_steps = 1
         current_epoch = configs['current_epoch']
         total_epochs = configs['total_epochs']
+        teacher_updates = configs.get('policy_step', -1)
         logger = configs['logger']
 
         all_correct = 0
@@ -63,10 +64,8 @@ class StudentNetwork(nn.Module):
             all_samples += num_samples
             loss.backward()
             optimizer.step()
-            logger.info('Train: ----- Iteration [%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
-                current_epoch, loss.cpu().data[0],
-                num_correct/num_samples, all_correct/all_samples))
-
+            logger.info('Policy Steps: [%d] Train: ----- Iteration [%d], loss: %5.4f, accuracy: %5.4f(%5.4f)' % (
+                teacher_updates, current_epoch-1, loss.cpu().data[0], num_correct/num_samples, all_correct/all_samples))
             loss_average += loss.cpu().data[0]
         return loss_average/total_steps
 

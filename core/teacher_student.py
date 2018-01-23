@@ -132,6 +132,7 @@ class TeacherStudentModel(nn.Module):
                     indices = torch.nonzero(predicts.data.squeeze() >= threshold)
                     if len(indices) == 0:
                         continue
+                    print ('Selected %d/%d samples'%(len(indices), len(labels)))
                     count += len(indices)
                     selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
                     selected_labels = labels[indices.squeeze()].view(-1, 1)
@@ -149,7 +150,8 @@ class TeacherStudentModel(nn.Module):
                     'optimizer': student_optimizer,
                     'current_epoch': student_updates,
                     'total_epochs': 0,
-                    'logger': logger
+                    'logger': logger,
+                    'policy_step': teacher_updates
                 }
                 # ================= feed the selected batch ============
                 train_loss = student.fit(st_configs)
@@ -161,8 +163,8 @@ class TeacherStudentModel(nn.Module):
                 st_configs['dataloader'] = dev_dataloader
                 acc, val_loss = student.val(st_configs)
                 best_acc_on_dev = acc if best_acc_on_dev < acc else best_acc_on_dev
-                logger.info('Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f'%(student_updates,
-                                                                                         acc, best_acc_on_dev))
+                logger.info('Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f'%(
+                    teacher_updates, student_updates, acc, best_acc_on_dev))
                 val_loss_history.append(val_loss)
 
                 # ============== check if reach the expected accuracy ==

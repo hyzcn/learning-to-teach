@@ -59,7 +59,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[2],
                 'root': root,
                 'transform': transform_test,
-                'batch_size': 64,
+                'batch_size': 256,
                 'shuffle': False
             },
         'test':
@@ -68,7 +68,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[3],
                 'root': root,
                 'transform': transform_test,
-                'batch_size': 64,
+                'batch_size': 256,
                 'shuffle': False
             }
     }
