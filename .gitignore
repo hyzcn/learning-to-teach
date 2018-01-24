@@ -113,9 +113,8 @@ run
 ._*
 
 #
-log/
 summary/
-*.data
 data/
+*.data
 .idea
 model/

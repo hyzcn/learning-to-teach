@@ -31,7 +31,7 @@ class StudentNetwork(nn.Module):
         return predicts, eval_res
 
     def fit(self, configs):
-        self.train()
+        self.base_model.train()
         dataloader, optimizer = configs['dataloader'], configs['optimizer']
         try:
             flag = True
@@ -70,7 +70,7 @@ class StudentNetwork(nn.Module):
         return loss_average/total_steps
 
     def val(self, configs):
-        self.eval()
+        self.base_model.eval()
         dataloader = configs['dataloader']
         total_steps = len(dataloader)
 
