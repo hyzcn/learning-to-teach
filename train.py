@@ -118,7 +118,7 @@ def main(hparams):
         'state_dict': model.state_dict(),
     }
     torch.save(contents, './model/checkpoint-model.pth.tar')
-    print ('Done. \n Testing the teaching policy............')
+    print ('Done. \nTesting the teaching policy............')
     curve = model.val_teacher(fit_configs)
     contents = {
         'state_dict': model.state_dict(),

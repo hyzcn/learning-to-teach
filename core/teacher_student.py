@@ -249,6 +249,8 @@ class TeacherStudentModel(nn.Module):
             label_pool = []
             # ================== collect training batch ============
             for idx, (inputs, labels) in enumerate(student_dataloader):
+                inputs = to_var(inputs)
+                labels = to_var(labels)
                 state_configs = {
                     'num_classes': num_classes,
                     'labels': labels,
@@ -260,14 +262,20 @@ class TeacherStudentModel(nn.Module):
                     'val_loss_history': val_loss_history
                 }
                 states = state_func(state_configs)  # TODO: implement the function for computing state
-                predicts = teacher(states, None)
-                indices = torch.nonzero(predicts >= threshold)
+                _inputs = {'input': states}
+                predicts = teacher(_inputs, None)
+
+                indices = torch.nonzero(predicts.data.squeeze() >= threshold)
                 if len(indices) == 0:
                     continue
                 count += len(indices)
-                selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(len(indices),
-                                                                                  *inputs.size()[1:])
-                selected_labels = torch.gather(labels, 0, indices.squeeze()).view(-1, 1)
+                # selected_inputs = torch.gather(inputs, 0, indices.squeeze()).view(len(indices),
+                #                                                                  *inputs.size()[1:])
+                # selected_labels = torch.gather(labels, 0, indices.squeeze()).view(-1, 1)
+                # import pdb
+                # pdb.set_trace()
+                selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
+                selected_labels = labels[indices.squeeze()].view(-1, 1)
                 input_pool.append(selected_inputs)
                 label_pool.append(selected_labels)
                 if count >= M:
@@ -300,7 +308,7 @@ class TeacherStudentModel(nn.Module):
 
             # =============== test on test set ======================
             st_configs['dataloader'] = test_dataloader
-            acc, test_loss = student.val(configs)
+            acc, test_loss = student.val(st_configs)
             best_acc_on_test = acc if best_acc_on_test < acc else best_acc_on_test
             logger.info('Testing Set: Iteration [%d], accuracy: %5.4f, best: %5.4f' % (student_updates,
                                                                                        acc, best_acc_on_test))
