@@ -129,7 +129,10 @@ class TeacherStudentModel(nn.Module):
                     states = state_func(state_configs) # TODO: implement the function for computing state
                     _inputs = {'input': states.detach()}
                     predicts = teacher(_inputs, None)
-                    indices = torch.nonzero(predicts.data.squeeze() >= threshold)
+                    # fuck this bug!!!
+                    # indices = torch.nonzero(predicts.data.squeeze() >= threshold)
+                    indices = torch.nonzero(torch.bernoulli(predicts.data.squeeze()))
+
                     if len(indices) == 0:
                         continue
                     print ('Selected %d/%d samples'%(len(indices), len(labels)))

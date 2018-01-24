@@ -117,14 +117,14 @@ def main(hparams):
     contents = {
         'state_dict': model.state_dict(),
     }
-    torch.save(contents, './model/fix-checkpoint-model.pth.tar')
+    torch.save(contents, './model/B-checkpoint-model.pth.tar')
     print ('Done. \nTesting the teaching policy............')
     curve = model.val_teacher(fit_configs)
     contents = {
         'state_dict': model.state_dict(),
         'curve': curve
     }
-    torch.save(contents, './model/fix-checkpoint-with-curve.pth.tar')
+    torch.save(contents, './model/B-checkpoint-with-curve.pth.tar')
     print ('Done')
     # saver.save(model, optimizer, latest_metric, epoch)
 
