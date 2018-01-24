@@ -78,7 +78,7 @@ class StudentNetwork(nn.Module):
         all_samples = 0
         loss_average = 0
         for idx, (inputs, labels) in enumerate(dataloader):
-            inputs = to_var(inputs)
+            inputs = to_var(inputs, volatile=True)
             labels = to_var(labels)
             predicts = self.base_model(inputs)
             eval_res = self.evaluator(predicts, labels)
@@ -89,6 +89,7 @@ class StudentNetwork(nn.Module):
             # logger.info('Eval: Epoch [%d/%d], Iteration [%d/%d], accuracy: %5.4f(%5.4f)' % (
             #    current_epoch, total_epochs, idx, total_steps, num_correct/num_samples, all_correct/all_samples))
             loss_average += eval_res['loss'].cpu().data[0]
+        print ('Total: %d, correct: %d', all_samples, all_correct)
 
         return all_correct/all_samples, loss_average/total_steps
 

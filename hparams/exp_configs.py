@@ -1,6 +1,6 @@
 from .hparams import HParams
 from .register import register
-from core.models.resnet import ResNet34
+from core.models.resnet import ResNet34, ResNet18
 from core.helper_functions import evaluator
 import torchvision.transforms as transforms
 import pickle

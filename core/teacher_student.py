@@ -75,7 +75,7 @@ class TeacherStudentModel(nn.Module):
         teacher = self.teacher_net
         student = self.student_net
         # ==================== fetch configs [optional] ===============
-        max_t = configs.get('max_t', 50000)
+        max_t = configs.get('max_t', 4000)
         tau = configs.get('tau', 0.8)
         threshold = configs.get('threshold', 0.5)
         M = configs.get('M', 128)
@@ -120,7 +120,7 @@ class TeacherStudentModel(nn.Module):
                         'num_classes': num_classes,
                         'labels': labels,
                         'inputs': inputs,
-                        'student': student,
+                        'student': student.train(),
                         'current_iter': i_tau,
                         'max_iter': max_t,
                         'train_loss_history': training_loss_history,
@@ -129,8 +129,6 @@ class TeacherStudentModel(nn.Module):
                     states = state_func(state_configs) # TODO: implement the function for computing state
                     _inputs = {'input': states.detach()}
                     predicts = teacher(_inputs, None)
-                    # fuck this bug!!!
-                    # indices = torch.nonzero(predicts.data.squeeze() >= threshold)
                     indices = torch.nonzero(torch.bernoulli(predicts.data.squeeze()))
 
                     if len(indices) == 0:
@@ -161,13 +159,12 @@ class TeacherStudentModel(nn.Module):
                 training_loss_history.append(train_loss)
                 student_updates += 1
                 student_lr_scheduler(student_optimizer, student_updates)
-
                 # ================ test on dev set =====================
                 st_configs['dataloader'] = dev_dataloader
                 acc, val_loss = student.val(st_configs)
                 best_acc_on_dev = acc if best_acc_on_dev < acc else best_acc_on_dev
-                logger.info('Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f'%(
-                    teacher_updates, student_updates, acc, best_acc_on_dev))
+                logger.info('Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f, loss: %5.4f'%(
+                    teacher_updates, student_updates, acc, best_acc_on_dev, val_loss))
                 val_loss_history.append(val_loss)
 
                 # ============== check if reach the expected accuracy ==
@@ -191,6 +188,9 @@ class TeacherStudentModel(nn.Module):
 
                     # ========= reinitialize the student network =========
                     init_params(self.student_net)
+                    student_updates = 0
+                    teacher_updates = 0
+                    best_acc_on_dev = 0
                     # ========== break for next batch ====================
                     break
 

@@ -17,9 +17,7 @@ class Cifar10Dataloader(data.Dataset):
     def __init__(self, configs):
         split = configs['split']
         root = configs['root']
-        self.transform = configs.get('transform', None)
-        if self.transform is None:
-            print ('Warning, transform is None!')
+        self.transform = configs['transform']
         self.split = split
         data_dict = torch.load(os.path.join(root, 'data', 'cifar10', split + '.pth'))
         labels = []
