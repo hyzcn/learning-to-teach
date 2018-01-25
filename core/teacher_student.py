@@ -142,7 +142,7 @@ class TeacherStudentModel(nn.Module):
                         selected_labels = labels[indices.squeeze()].view(-1, 1)
                         input_pool.append(selected_inputs)
                         label_pool.append(selected_labels)
-                        actions.append(torch.log(predicts.squeeze())*to_var(sampled_actions))
+                        actions.append(torch.log(predicts.squeeze())*to_var(sampled_actions-0.5)*2)
                         if count >= M:
                             break
                     if count >= M:
@@ -185,12 +185,17 @@ class TeacherStudentModel(nn.Module):
                         non_increasing_steps += 1
                     else:
                         non_increasing_steps = 0
-                    loss = -sum([torch.mean(_) for _ in actions])/len(actions)*(reward - baseline)
+
+                    loss = -sum([torch.sum(_) for _ in actions])*(reward - baseline)
                     logger.info('Policy: Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, '
                                 'reward: %5.4f(%5.4f)'
                                 %(teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
                     rewards.append(reward)
+                    for name, param in teacher.named_parameters():
+                        print (name, param)
                     loss.backward()
+                    for name, param in teacher.named_parameters():
+                        print (name, param.grad)
                     teacher_optimizer.step()
                     teacher_updates += 1
                     teacher_lr_scheduler(teacher_optimizer, teacher_updates)
