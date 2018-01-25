@@ -77,7 +77,7 @@ def main(hparams):
     teacher_optimizer = get_optimizer(_teacher_optim_configs)
 
     # ================= set up optional configs =========================
-    max_t = hparams.optional.get('max_t', 4000)
+    max_t = hparams.optional.get('max_t', 3500)
     tau = hparams.optional.get('tau', 0.8)
     threshold = hparams.optional.get('threshold', 0.5)
     M = hparams.optional.get('M', 128)

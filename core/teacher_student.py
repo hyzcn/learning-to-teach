@@ -75,7 +75,7 @@ class TeacherStudentModel(nn.Module):
         teacher = self.teacher_net
         student = self.student_net
         # ==================== fetch configs [optional] ===============
-        max_t = configs.get('max_t', 4000)
+        max_t = configs.get('max_t', 2500)
         tau = configs.get('tau', 0.8)
         threshold = configs.get('threshold', 0.5)
         M = configs.get('M', 128)
@@ -113,33 +113,38 @@ class TeacherStudentModel(nn.Module):
                 input_pool = []
                 label_pool = []
                 # ================== collect training batch ============
-                for idx, (inputs, labels) in enumerate(teacher_dataloader):
-                    inputs = to_var(inputs)
-                    labels = to_var(labels)
-                    state_configs = {
-                        'num_classes': num_classes,
-                        'labels': labels,
-                        'inputs': inputs,
-                        'student': student.train(),
-                        'current_iter': i_tau,
-                        'max_iter': max_t,
-                        'train_loss_history': training_loss_history,
-                        'val_loss_history': val_loss_history
-                    }
-                    states = state_func(state_configs) # TODO: implement the function for computing state
-                    _inputs = {'input': states.detach()}
-                    predicts = teacher(_inputs, None)
-                    indices = torch.nonzero(torch.bernoulli(predicts.data.squeeze()))
+                while True:
+                    for idx, (inputs, labels) in enumerate(teacher_dataloader):
+                        inputs = to_var(inputs)
+                        labels = to_var(labels)
+                        state_configs = {
+                            'num_classes': num_classes,
+                            'labels': labels,
+                            'inputs': inputs,
+                            'student': student.train(),
+                            'current_iter': i_tau,
+                            'max_iter': max_t,
+                            'train_loss_history': training_loss_history,
+                            'val_loss_history': val_loss_history
+                        }
+                        states = state_func(state_configs) # TODO: implement the function for computing state
+                        _inputs = {'input': states.detach()}
+                        predicts = teacher(_inputs, None)
+                        sampled_actions = torch.bernoulli(predicts.data.squeeze())
+                        indices = torch.nonzero(sampled_actions)
 
-                    if len(indices) == 0:
-                        continue
-                    print ('Selected %d/%d samples'%(len(indices), len(labels)))
-                    count += len(indices)
-                    selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
-                    selected_labels = labels[indices.squeeze()].view(-1, 1)
-                    input_pool.append(selected_inputs)
-                    label_pool.append(selected_labels)
-                    actions.append(torch.log(predicts))
+                        if len(indices) == 0:
+                            print (predicts.data.squeeze())
+                            continue
+                        print ('Selected %d/%d samples'%(len(indices), len(labels)))
+                        count += len(indices)
+                        selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
+                        selected_labels = labels[indices.squeeze()].view(-1, 1)
+                        input_pool.append(selected_inputs)
+                        label_pool.append(selected_labels)
+                        actions.append(torch.log(predicts.squeeze())*to_var(sampled_actions))
+                        if count >= M:
+                            break
                     if count >= M:
                         break
 
@@ -175,10 +180,14 @@ class TeacherStudentModel(nn.Module):
                     reward = -math.log(i_tau/max_t)
                     baseline = 0 if len(rewards) == 0 else sum(rewards)/len(rewards)
                     last_reward = 0 if len(rewards) == 0 else rewards[-1]
+
                     if last_reward >= reward:
                         non_increasing_steps += 1
-                    loss = -sum([torch.sum(_) for _ in actions])*(reward - baseline)
-                    logger.info('Policy: Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, reward: %5.4f(%5.4f)'
+                    else:
+                        non_increasing_steps = 0
+                    loss = -sum([torch.mean(_) for _ in actions])/len(actions)*(reward - baseline)
+                    logger.info('Policy: Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, '
+                                'reward: %5.4f(%5.4f)'
                                 %(teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
                     rewards.append(reward)
                     loss.backward()
@@ -189,8 +198,8 @@ class TeacherStudentModel(nn.Module):
                     # ========= reinitialize the student network =========
                     init_params(self.student_net)
                     student_updates = 0
-                    teacher_updates = 0
                     best_acc_on_dev = 0
+                    print ('Initialized the student net\'s parameters')
                     # ========== break for next batch ====================
                     break
 
