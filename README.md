@@ -4,8 +4,8 @@ For deatils please refer to [Learning to teach](https://openreview.net/pdf?id=HJ
 # Current implementation & TODO
 - [x] support cifar10.
 - [ ] Reproduce the results on cifar10. (On going, training)
-- [ ] Check some details of the paper (not sure yet.)
-- [ ] Use it to pre-train the policy on Caption task.
+
+
 
 # Dataset:
 First download splitted dataset.
