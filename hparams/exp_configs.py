@@ -41,7 +41,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[0],
                 'root': root,
                 'transform':transform_train,
-                'batch_size': 32,
+                'batch_size': 2,
                 'shuffle': True
             },
         'student_train':
@@ -50,7 +50,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[1],
                 'root': root,
                 'transform': transform_train,
-                'batch_size': 32,
+                'batch_size': 2,
                 'shuffle': True
             },
         'dev':
@@ -59,7 +59,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[2],
                 'root': root,
                 'transform': transform_test,
-                'batch_size': 512,
+                'batch_size': 1250,
                 'shuffle': False
             },
         'test':
@@ -68,7 +68,7 @@ def cifar10_l2t(extra_info):
                 'split': splits[3],
                 'root': root,
                 'transform': transform_test,
-                'batch_size': 512,
+                'batch_size': 1250,
                 'shuffle': False
             }
     }
@@ -80,8 +80,8 @@ def cifar10_l2t(extra_info):
     optimizer = {
         'teacher_configs':
             {
-                'base_lr': 1e-4,
-                'optimizer': 'Adam',
+                'base_lr': 0.01,
+                'optimizer': 'Adam'
             },
         'student_configs':
             {

@@ -77,7 +77,7 @@ def main(hparams):
     teacher_optimizer = get_optimizer(_teacher_optim_configs)
 
     # ================= set up optional configs =========================
-    max_t = hparams.optional.get('max_t', 3500)
+    max_t = hparams.optional.get('max_t', 5000)
     tau = hparams.optional.get('tau', 0.8)
     threshold = hparams.optional.get('threshold', 0.5)
     M = hparams.optional.get('M', 128)
@@ -117,14 +117,14 @@ def main(hparams):
     contents = {
         'state_dict': model.state_dict(),
     }
-    torch.save(contents, './model/weight-decay-checkpoint-model.pth.tar')
+    torch.save(contents, './model/b1-weight-decay-checkpoint-model.pth.tar')
     print ('Done. \nTesting the teaching policy............')
     curve = model.val_teacher(fit_configs)
     contents = {
         'state_dict': model.state_dict(),
         'curve': curve
     }
-    torch.save(contents, './model/weight-decay-checkpoint-with-curve.pth.tar')
+    torch.save(contents, './model/b1-weight-decay-checkpoint-with-curve.pth.tar')
     print ('Done')
     # saver.save(model, optimizer, latest_metric, epoch)
 
