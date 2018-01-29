@@ -89,7 +89,7 @@ class StudentNetwork(nn.Module):
             # logger.info('Eval: Epoch [%d/%d], Iteration [%d/%d], accuracy: %5.4f(%5.4f)' % (
             #    current_epoch, total_epochs, idx, total_steps, num_correct/num_samples, all_correct/all_samples))
             loss_average += eval_res['loss'].cpu().data[0]
-        print ('Total: %d, correct: %d', all_samples, all_correct)
+        # print ('Total: %d, correct: %d', all_samples, all_correct)
 
         return all_correct/all_samples, loss_average/total_steps
 

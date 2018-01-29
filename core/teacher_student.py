@@ -75,7 +75,7 @@ class TeacherStudentModel(nn.Module):
         teacher = self.teacher_net
         student = self.student_net
         # ==================== fetch configs [optional] ===============
-        max_t_list = configs.get('max_t', [400, 500, 600, 600, 600])
+        max_t_list = configs.get('max_t', [600, 600, 600, 600, 600])
         tau_list = configs.get('tau', [0.3, 0.5, 0.6, 0.7, 0.8])
         num_steps_to_achieve = {i: [] for i in xrange(len(tau_list))}
         pointer = 0
@@ -107,13 +107,13 @@ class TeacherStudentModel(nn.Module):
             actions = []
             max_t = max_t_list[pointer]
             tau = tau_list[pointer]
-            file_name = './model/resnet34-%5.4f.pth.tar' % (tau_list[pointer])
 
             def overloaded_init_params(x):
                 if pointer == 0:
                     init_params(x)
                 else:
-                    logger.info ('Loaded model from', file_name)
+                    file_name = './model/resnet34-%5.4f.pth.tar' % (tau_list[pointer - 1])
+                    logger.info ('Loaded model from' + file_name)
                     x.load_state_dict(torch.load(file_name)['state_dict'])
 
             while i_tau < max_t:
@@ -143,9 +143,9 @@ class TeacherStudentModel(nn.Module):
                         indices = torch.nonzero(sampled_actions)
 
                         if len(indices) == 0:
-                            print (predicts.data.squeeze())
+                            #print (predicts.data.squeeze())
                             continue
-                        print ('Selected %d/%d samples'%(len(indices), len(labels)))
+                        # print ('Selected %d/%d samples'%(len(indices), len(labels)))
                         count += len(indices)
                         selected_inputs = inputs[indices.squeeze()].view(len(indices), *inputs.size()[1:])
                         selected_labels = labels[indices.squeeze()].view(-1, 1)
@@ -221,11 +221,20 @@ class TeacherStudentModel(nn.Module):
             if non_increasing_steps >= max_non_increasing_steps:
                 if pointer + 1 == len(tau_list):
                     # logger.info()
+                    torch.save({'num_steps_to_achieve':num_steps_to_achieve}, './tmp/stage_%d.pth.tar'%(pointer))
                     print (num_steps_to_achieve)
                     return num_steps_to_achieve
                 else:
                     logger.info('*******Going into the next stage[' + str(pointer + 1) + ']***********')
+                    torch.save({'num_steps_to_achieve': num_steps_to_achieve}, './tmp/stage_%d.pth.tar' % (pointer))
                     print (num_steps_to_achieve[pointer])
+                    rewards = []
+                    training_loss_history = []
+                    val_loss_history = []
+                    non_increasing_steps = 0
+                    student_updates = 0
+                    teacher_updates = 0
+                    best_acc_on_dev = 0
                     pointer += 1
 
 
