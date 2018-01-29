@@ -75,9 +75,10 @@ class TeacherStudentModel(nn.Module):
         teacher = self.teacher_net
         student = self.student_net
         # ==================== fetch configs [optional] ===============
-        max_t = configs.get('max_t', 2500)
-        tau = configs.get('tau', 0.8)
-        threshold = configs.get('threshold', 0.5)
+        max_t_list = configs.get('max_t', [400, 500, 600, 600, 600])
+        tau_list = configs.get('tau', [0.3, 0.5, 0.6, 0.7, 0.8])
+        num_steps_to_achieve = {i: [] for i in xrange(len(tau_list))}
+        pointer = 0
         M = configs.get('M', 128)
         max_non_increasing_steps = configs.get('max_non_increasing_steps', 10)
         num_classes = configs.get('num_classes', 10)
@@ -85,9 +86,7 @@ class TeacherStudentModel(nn.Module):
         # =================== fetch configs [required] ================
         state_func = configs['state_func']
         teacher_dataloader = configs['dataloader']['teacher']
-        # student_dataloader = configs['dataloader']['student']
         dev_dataloader = configs['dataloader']['dev']
-        # test_dataloader = configs['dataloader']['test']
         teacher_optimizer = configs['optimizer']['teacher']
         student_optimizer = configs['optimizer']['student']
         teacher_lr_scheduler = configs['lr_scheduler']['teacher']
@@ -106,6 +105,16 @@ class TeacherStudentModel(nn.Module):
         while True:
             i_tau = 0
             actions = []
+            max_t = max_t_list[pointer]
+            tau = tau_list[pointer]
+            file_name = './model/resnet34-%5.4f.pth.tar' % (tau_list[pointer])
+
+            def overloaded_init_params(x):
+                if pointer == 0:
+                    init_params(x)
+                else:
+                    logger.info ('Loaded model from', file_name)
+                    x.load_state_dict(torch.load(file_name)['state_dict'])
 
             while i_tau < max_t:
                 i_tau += 1
@@ -168,13 +177,13 @@ class TeacherStudentModel(nn.Module):
                 st_configs['dataloader'] = dev_dataloader
                 acc, val_loss = student.val(st_configs)
                 best_acc_on_dev = acc if best_acc_on_dev < acc else best_acc_on_dev
-                logger.info('Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f, loss: %5.4f'%(
-                    teacher_updates, student_updates, acc, best_acc_on_dev, val_loss))
+                logger.info('Stage [%d], Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f, loss: %5.4f'%(
+                    pointer, teacher_updates, student_updates, acc, best_acc_on_dev, val_loss))
                 val_loss_history.append(val_loss)
-
                 # ============== check if reach the expected accuracy ==
                 # ============== or exceeds the max_t ==================
                 if acc >= tau or i_tau == max_t:
+                    num_steps_to_achieve[pointer].append(i_tau)
                     teacher_optimizer.zero_grad()
 
                     reward = -math.log(i_tau/max_t)
@@ -191,17 +200,17 @@ class TeacherStudentModel(nn.Module):
                                 'reward: %5.4f(%5.4f)'
                                 %(teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
                     rewards.append(reward)
-                    for name, param in teacher.named_parameters():
-                        print (name, param)
+                    # for name, param in teacher.named_parameters():
+                    #     print (name, param)
                     loss.backward()
-                    for name, param in teacher.named_parameters():
-                        print (name, param.grad)
+                    # for name, param in teacher.named_parameters():
+                    #     print (name, param.grad)
                     teacher_optimizer.step()
                     teacher_updates += 1
                     teacher_lr_scheduler(teacher_optimizer, teacher_updates)
 
                     # ========= reinitialize the student network =========
-                    init_params(self.student_net)
+                    overloaded_init_params(self.student_net)
                     student_updates = 0
                     best_acc_on_dev = 0
                     print ('Initialized the student net\'s parameters')
@@ -210,7 +219,15 @@ class TeacherStudentModel(nn.Module):
 
             # ==================== policy converged (stopping criteria) ==
             if non_increasing_steps >= max_non_increasing_steps:
-                return
+                if pointer + 1 == len(tau_list):
+                    # logger.info()
+                    print (num_steps_to_achieve)
+                    return num_steps_to_achieve
+                else:
+                    logger.info('*******Going into the next stage[' + str(pointer + 1) + ']***********')
+                    print (num_steps_to_achieve[pointer])
+                    pointer += 1
+
 
     def val_teacher(self, configs):
         # TODO: test for the policy. Plotting the curve of #effective_samples-test_accuracy

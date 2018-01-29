@@ -80,8 +80,9 @@ def cifar10_l2t(extra_info):
     optimizer = {
         'teacher_configs':
             {
-                'base_lr': 0.01,
-                'optimizer': 'Adam'
+                'base_lr': 0.1,
+                'optimizer': 'SGD',
+                'momentum': 0.9
             },
         'student_configs':
             {
