@@ -75,13 +75,11 @@ class TeacherStudentModel(nn.Module):
         teacher = self.teacher_net
         student = self.student_net
         # ==================== fetch configs [optional] ===============
-        max_t_list = configs.get('max_t', [600, 600, 600, 600, 600])
-        tau_list = configs.get('tau', [0.3, 0.5, 0.6, 0.7, 0.8])
-        num_steps_to_achieve = {i: [] for i in xrange(len(tau_list))}
-        pointer = 0
-        M = configs.get('M', 128)
-        max_non_increasing_steps = configs.get('max_non_increasing_steps', 10)
-        num_classes = configs.get('num_classes', 10)
+        max_t = configs['max_t']
+        tau = configs['tau']
+        M = configs['M']
+        max_non_increasing_steps = configs['max_non_increasing_steps']
+        num_classes = configs['num_classes']
 
         # =================== fetch configs [required] ================
         state_func = configs['state_func']
@@ -97,6 +95,7 @@ class TeacherStudentModel(nn.Module):
         rewards = []
         training_loss_history = []
         val_loss_history = []
+        num_steps_to_achieve = []
 
         non_increasing_steps = 0
         student_updates = 0
@@ -105,16 +104,15 @@ class TeacherStudentModel(nn.Module):
         while True:
             i_tau = 0
             actions = []
-            max_t = max_t_list[pointer]
-            tau = tau_list[pointer]
 
             def overloaded_init_params(x):
-                if pointer == 0:
-                    init_params(x)
-                else:
-                    file_name = './model/resnet34-%5.4f.pth.tar' % (tau_list[pointer - 1])
-                    logger.info ('Loaded model from' + file_name)
-                    x.load_state_dict(torch.load(file_name)['state_dict'])
+                init_params(x)
+                # if pointer == 0:
+                #    init_params(x)
+                # else:
+                #     file_name = './model/resnet34-%5.4f.pth.tar' % (tau_list[pointer - 1])
+                #     logger.info('Loaded model from' + file_name)
+                #     x.load_state_dict(torch.load(file_name)['state_dict'])
 
             while i_tau < max_t:
                 i_tau += 1
@@ -136,7 +134,7 @@ class TeacherStudentModel(nn.Module):
                             'train_loss_history': training_loss_history,
                             'val_loss_history': val_loss_history
                         }
-                        states = state_func(state_configs) # TODO: implement the function for computing state
+                        states = state_func(state_configs)  # TODO: implement the function for computing state
                         _inputs = {'input': states.detach()}
                         predicts = teacher(_inputs, None)
                         sampled_actions = torch.bernoulli(predicts.data.squeeze())
@@ -177,17 +175,16 @@ class TeacherStudentModel(nn.Module):
                 st_configs['dataloader'] = dev_dataloader
                 acc, val_loss = student.val(st_configs)
                 best_acc_on_dev = acc if best_acc_on_dev < acc else best_acc_on_dev
-                logger.info('Stage [%d], Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f, loss: %5.4f'%(
-                    pointer, teacher_updates, student_updates, acc, best_acc_on_dev, val_loss))
+                logger.info('Stage [%d], Policy Steps: [%d] Test on Dev: Iteration [%d], accuracy: %5.4f, best: %5.4f, '
+                            'loss: %5.4f' % (0, teacher_updates, student_updates, acc, best_acc_on_dev, val_loss))
                 val_loss_history.append(val_loss)
-                # ============== check if reach the expected accuracy ==
-                # ============== or exceeds the max_t ==================
+                # ============== check if reach the expected accuracy or exceeds the max_t ==================
                 if acc >= tau or i_tau == max_t:
-                    num_steps_to_achieve[pointer].append(i_tau)
+                    num_steps_to_achieve.append(i_tau)
                     teacher_optimizer.zero_grad()
 
                     reward = -math.log(i_tau/max_t)
-                    baseline = 0 if len(rewards) == 0 else sum(rewards)/len(rewards)
+                    baseline = 0 if len(rewards) == 0 else 0.8*baseline + 0.2*reward
                     last_reward = 0 if len(rewards) == 0 else rewards[-1]
 
                     if last_reward >= reward:
@@ -196,16 +193,17 @@ class TeacherStudentModel(nn.Module):
                         non_increasing_steps = 0
 
                     loss = -sum([torch.sum(_) for _ in actions])*(reward - baseline)
+                    print ('='*80)
+                    print (actions[0])
+                    print ('='*80)
                     logger.info('Policy: Iterations [%d], stops at %d/%d to achieve %5.4f, loss: %5.4f, '
                                 'reward: %5.4f(%5.4f)'
                                 %(teacher_updates, i_tau, max_t, acc, loss.cpu().data[0], reward, baseline))
                     rewards.append(reward)
-                    # for name, param in teacher.named_parameters():
-                    #     print (name, param)
                     loss.backward()
-                    # for name, param in teacher.named_parameters():
-                    #     print (name, param.grad)
                     teacher_optimizer.step()
+                    for name, param in teacher.named_parameters():
+                        print (name, param)
                     teacher_updates += 1
                     teacher_lr_scheduler(teacher_optimizer, teacher_updates)
 
@@ -219,24 +217,26 @@ class TeacherStudentModel(nn.Module):
 
             # ==================== policy converged (stopping criteria) ==
             if non_increasing_steps >= max_non_increasing_steps:
-                if pointer + 1 == len(tau_list):
-                    # logger.info()
-                    torch.save({'num_steps_to_achieve':num_steps_to_achieve}, './tmp/stage_%d.pth.tar'%(pointer))
-                    print (num_steps_to_achieve)
-                    return num_steps_to_achieve
-                else:
-                    logger.info('*******Going into the next stage[' + str(pointer + 1) + ']***********')
-                    torch.save({'num_steps_to_achieve': num_steps_to_achieve}, './tmp/stage_%d.pth.tar' % (pointer))
-                    print (num_steps_to_achieve[pointer])
-                    rewards = []
-                    training_loss_history = []
-                    val_loss_history = []
-                    non_increasing_steps = 0
-                    student_updates = 0
-                    teacher_updates = 0
-                    best_acc_on_dev = 0
-                    pointer += 1
-
+                torch.save({'num_steps_to_achieve': num_steps_to_achieve}, './tmp/curve_stage_%d.pth.tar' % 0)
+                print(num_steps_to_achieve)
+                return num_steps_to_achieve
+                # if pointer + 1 == len(tau_list):
+                #     # logger.info()
+                #     torch.save({'num_steps_to_achieve':num_steps_to_achieve}, './tmp/stage_%d.pth.tar'%(pointer))
+                #     print (num_steps_to_achieve)
+                #     return num_steps_to_achieve
+                # else:
+                #     logger.info('*******Going into the next stage[' + str(pointer + 1) + ']***********')
+                #     torch.save({'num_steps_to_achieve': num_steps_to_achieve}, './tmp/stage_%d.pth.tar' % (pointer))
+                #     print (num_steps_to_achieve[pointer])
+                #     rewards = []
+                #     training_loss_history = []
+                #     val_loss_history = []
+                #     non_increasing_steps = 0
+                #     student_updates = 0
+                #     teacher_updates = 0
+                #     best_acc_on_dev = 0
+                #     pointer += 1
 
     def val_teacher(self, configs):
         # TODO: test for the policy. Plotting the curve of #effective_samples-test_accuracy

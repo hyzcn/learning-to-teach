@@ -15,7 +15,13 @@ def student_learning_rate_scheduler(optimizer, iterations):
 
 
 def teacher_learning_rate_scheduler(optimizer, iterations):
-    return
+    for param_group in optimizer.param_groups:
+        lr = param_group['lr']
+        break
+    if iterations % 50 == 0:
+        lr = lr * 0.1
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def get_scheduler(name):

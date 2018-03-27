@@ -16,7 +16,7 @@ def cifar10_l2t(extra_info):
     dataset = 'cifar10'
     splits = ['teacher_train', 'student_train', 'dev', 'test']
     teacher_configs = {
-        'input_dim':25
+        'input_dim': 25
     }
     student_configs = {
         'base_model': ResNet34(),
@@ -40,7 +40,7 @@ def cifar10_l2t(extra_info):
                 'dataset': dataset,
                 'split': splits[0],
                 'root': root,
-                'transform':transform_train,
+                'transform': transform_train,
                 'batch_size': 2,
                 'shuffle': True
             },
@@ -80,9 +80,8 @@ def cifar10_l2t(extra_info):
     optimizer = {
         'teacher_configs':
             {
-                'base_lr': 0.1,
+                'base_lr': 0.02,
                 'optimizer': 'SGD',
-                'momentum': 0.9
             },
         'student_configs':
             {
@@ -95,7 +94,7 @@ def cifar10_l2t(extra_info):
     optional = dict()
     logger_configs = {
         'output_path': './log',
-        'cfg_name': '%s-l2t'%dataset
+        'cfg_name': '%s-l2t-new-version-dgx1-batch-1-sgd-lr0.02' % dataset
     }
 
     hparams = HParams(

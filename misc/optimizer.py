@@ -10,4 +10,4 @@ def get_optimizer(configs):
     if momentum != 0:
         return built_in[optimizer](model.parameters(), lr=base_lr, momentum=momentum, weight_decay=5e-4)
     else:
-        return built_in[optimizer](model.parameters(), lr=base_lr)
+        return built_in[optimizer](model.parameters(), lr=base_lr, weight_decay=5e-4)

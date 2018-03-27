@@ -77,8 +77,8 @@ def main(hparams):
     teacher_optimizer = get_optimizer(_teacher_optim_configs)
 
     # ================= set up optional configs =========================
-    max_t = hparams.optional.get('max_t', [400, 500, 600, 600, 600])
-    tau = hparams.optional.get('tau', [0.3, 0.5, 0.6, 0.7, 0.8])
+    max_t = hparams.optional.get('max_t', 24219)
+    tau = hparams.optional.get('tau', 0.84)
     threshold = hparams.optional.get('threshold', 0.5)
     M = hparams.optional.get('M', 128)
     max_non_increasing_steps = hparams.optional.get('max_non_increasing_steps', 10)
@@ -91,8 +91,8 @@ def main(hparams):
             {
                 'teacher': teacher_train_loader,
                 'student': student_train_loader,
-                'dev'    : dev_loader,
-                'test'   : test_loader
+                'dev': dev_loader,
+                'test': test_loader
             },
         'optimizer':
             {
@@ -109,7 +109,7 @@ def main(hparams):
         'tau': tau,
         'threshold': threshold,
         'M': M,
-        'max_non_increasing_steps':max_non_increasing_steps,
+        'max_non_increasing_steps': max_non_increasing_steps,
         'num_classes': num_classes
     }
     print ('Fitting the teacher starts.............')

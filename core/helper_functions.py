@@ -44,13 +44,17 @@ def state_func(configs):
     data_features = to_var(torch.zeros(n_samples, num_classes))
     data_features[range(n_samples), labels.data] = 1
 
-    def sigmoid(x):
-        return 1.0/(1.0 + math.exp(-x))
-
+    # def sigmoid(x):
+    #     return 1.0/(1.0 + math.exp(-x))
+    def normalize_loss(loss):
+        return loss/2.3
+    # [ max_iter; averaged_train_loss; best_val_loss ]
     model_features = to_var(torch.zeros(n_samples, 3))
-    model_features[:, 0] = current_iter / max_iter # current iteration number
-    model_features[:, 1] = 0 if len(train_loss_history) == 0 else sigmoid(sum(train_loss_history)/len(train_loss_history)) # averaged training loss
-    model_features[:, 2] = 1 if len(val_loss_history) == 0 else sigmoid(min(val_loss_history))
+    model_features[:, 0] = current_iter / max_iter  # current iteration number
+    model_features[:, 1] = min(1.0, 1.0 if len(train_loss_history) == 0 else sum(train_loss_history)/len(train_loss_history)/2.3)
+    # sigmoid(sum(train_loss_history)/len(train_loss_history)) # averaged training loss
+    model_features[:, 2] = min(1.0, 1.0 if len(val_loss_history) == 0 else min(val_loss_history)/2.3)
+    # sigmoid(min(val_loss_history))
 
     combined_features = to_var(torch.zeros(n_samples, 12))
     combined_features[:, :10] = predicts
